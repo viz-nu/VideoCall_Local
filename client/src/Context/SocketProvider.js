@@ -17,18 +17,38 @@ const SocketProvider = ({ children }) => {
     const myVideo = useRef();
     const userVideo = useRef();
     const connectionRef = useRef();
-
+    const setupMediaStream = async (myVideo) => {
+        try {
+            const constraints = { video: true, audio: true };
+            const currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+            setStream(currentStream);
+            myVideo.current.srcObject = currentStream;
+            console.log('Media stream obtained:', currentStream);
+            console.log('myVideo:', myVideo);
+        } catch (error) {
+            console.error('Error getting media stream:', error);
+        }
+    }
 
     useEffect(() => {
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then((currentStream) => {
-                setStream(currentStream);
-                myVideo.current.srcObject = currentStream;
-            });
-        socket.on('me', (id) => { setMe(id); console.log(id); })
-        socket.on('call-User', ({ from, name: callerName, signal }) => {
+        setupMediaStream(myVideo);
+
+        const handleMe = (id) => {
+            setMe(id);
+            console.log(id);
+        };
+        const handleCallUser = ({ from, name: callerName, signal }) => {
             setCall({ isReceivingCall: true, from, name: callerName, signal });
-        });
+        };
+
+        socket.on('me', handleMe);
+        socket.on('call-User', handleCallUser);
+
+        return () => {
+            socket.off('me', handleMe);
+            socket.off('call-User', handleCallUser);
+        };
+
     }, [])
 
 
@@ -40,6 +60,7 @@ const SocketProvider = ({ children }) => {
         })
         peer.on('stream', (currentStream) => {
             userVideo.current.srcObject = currentStream;
+            myVideo.current.srcObject = stream;
         });
         peer.signal(call.signal);
         connectionRef.current = peer;
@@ -50,6 +71,7 @@ const SocketProvider = ({ children }) => {
             socket.emit('callUser', { userToCall: id, signalData: data, from: me, name });
         });
         peer.on('stream', (currentStream) => {
+            myVideo.current.srcObject = stream;
             userVideo.current.srcObject = currentStream;
         });
         socket.on('callAccepted', (signal) => {
@@ -66,7 +88,7 @@ const SocketProvider = ({ children }) => {
 
     return (
         <SocketContext.Provider value={{ answerCall, callUser, leaveCall, callAccepted, callEnded, name, setName, call, me, myVideo, userVideo, stream }}>
-            {children}
+            {stream && children}
         </SocketContext.Provider>
     )
 }
