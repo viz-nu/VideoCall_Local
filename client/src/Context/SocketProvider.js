@@ -9,6 +9,8 @@ const SocketProvider = ({ children }) => {
     const [stream, setStream] = useState();
     const [name, setName] = useState('');
     const [call, setCall] = useState({});
+    const [isMuted, setIsMuted] = useState(false);
+    const [isCameraOn, setIsCameraOn] = useState(true);
     const [me, setMe] = useState('');
 
 
@@ -51,7 +53,22 @@ const SocketProvider = ({ children }) => {
 
     }, [])
 
+    const toggleMute = () => {
+        const tracks = stream.getAudioTracks();
+        tracks.forEach((track) => {
+            track.enabled = !isMuted;
+        });
+        setIsMuted(!isMuted);
+    };
+    const toggleCamera = () => {
+        const tracks = stream.getVideoTracks();
+        tracks.forEach((track) => {
+            track.enabled = !isCameraOn;
+        });
+        setIsCameraOn(!isCameraOn);
+    };
 
+//
     const answerCall = () => {
         setCallAccepted(true)
         const peer = new Peer({ initiator: false, trickle: false, stream });
@@ -87,7 +104,7 @@ const SocketProvider = ({ children }) => {
     }
 
     return (
-        <SocketContext.Provider value={{ answerCall, callUser, leaveCall, callAccepted, callEnded, name, setName, call, me, myVideo, userVideo, stream }}>
+        <SocketContext.Provider value={{ answerCall, callUser, leaveCall, callAccepted, callEnded, name, setName, call, me, myVideo, userVideo, stream, isMuted, setIsMuted, isCameraOn, setIsCameraOn, toggleCamera, toggleMute }}>
             {stream && children}
         </SocketContext.Provider>
     )
